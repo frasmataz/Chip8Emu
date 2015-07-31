@@ -29,156 +29,164 @@ function chip8() {
         var address;
         var x, y, kk;
 
-        if (this.opcode == 0x0) {
-            this.pc+=2;
-        } else if (this.opcode == 0x00E0) {
-            //CLS -- 0x00E0 CLEAR SCREEN
+        x = (this.opcode & 0x0F00) >> 8;
+        y = (this.opcode & 0x00F0) >> 4;
+        kk = this.opcode & 0x00FF;
+        address = this.opcode & 0x0FFF;
 
-            for (var i = 0; i < 64*32; i++) {
-                this.framebuffer[i] = 0;
-            }
+        var opcodeClass = (this.opcode & 0xF000) >> 12
 
-            this.pc+=2;
+        switch (opcodeClass) {
 
-        } else if (this.opcode == 0x00EE) {
-            //RET -- 0x00EE RETURN FROM SUBROUTINE
+            case 0x0:
+                if (this.opcode == 0x0) {
+                    this.pc+=2;
+                } else if (this.opcode == 0x00E0) {
+                    //CLS -- 0x00E0 CLEAR SCREEN
 
-        } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
-            //SYS -- 0x0nnn CALL SUBROUTINE AT nnn
+                    for (var i = 0; i < 64*32; i++) {
+                        this.framebuffer[i] = 0;
+                    }
 
-            //NOT IMPLEMENTED
-        } else if (this.opcode >= 0x1000 && this.opcode < 0x1FFF) {
-            //JP -- 0x1nnn JUMP TO LOCATION nnn
+                    this.pc+=2;
 
-            address = this.opcode & 0x0FFF;
-            this.pc = address;
+                } else if (this.opcode == 0x00EE) {
+                    //RET -- 0x00EE RETURN FROM SUBROUTINE
 
-        } else if (this.opcode >= 0x2000 && this.opcode < 0x2FFF) {
-            //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
+                } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
+                    //SYS -- 0x0nnn CALL SUBROUTINE AT nnn
 
-            address = this.opcode & 0x0FFF; //Get address from this.opcode
-            this.stack[this.sp] = this.pc; //Push current position onto stack
-            ++this.sp; //Increment stack pointer
-            this.pc = address; //Jump to address
+                    //NOT IMPLEMENTED
+                }
 
-        } else if (this.opcode >= 0x3000 && this.opcode < 0x3FFF) {
-            //SE -- 0x3xkk SKIP NEXT INSTRUCTION IF Vx = kk
+                break;
 
-            x = (this.opcode & 0x0F00) >> 8;
-            kk = this.opcode & 0x00FF;
+            case 0x1:
+                //JP -- 0x1nnn JUMP TO LOCATION nnn
 
-            if (this.registers[x] == kk)
-                this.pc += 4;
-            else
+                this.pc = address;
+                break;
+
+            case 0x2:
+                //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
+
+                this.stack[this.sp] = this.pc; //Push current position onto stack
+                ++this.sp; //Increment stack pointer
+                this.pc = address; //Jump to address
+                break;
+
+            case 0x3:
+                //SE -- 0x3xkk SKIP NEXT INSTRUCTION IF Vx = kk
+
+                if (this.registers[x] == kk)
+                    this.pc += 4;
+                else
+                    this.pc += 2;
+                break;
+
+            case 0x4:
+                //SNE -- 0x4xkk SKIP NEXT INSTRUCTION IF Vx != kk
+
+                if (this.registers[x] !== kk)
+                    this.pc += 4;
+                else
+                    this.pc += 2;
+                break;
+
+            case 0x5:
+                //SE -- 0x5xy0 SKIP NEXT INSTRUCTION IF Vx = Vy
+
+                if (this.registers[x] === this.registers[y])
+                    this.pc += 4;
+                else
+                    this.pc += 2;
+                break;
+
+            case 0x6:
+                //LD -- 0x6xkk SET Vx = kk
+
+                this.registers[x] = kk;
                 this.pc += 2;
 
-        } else if (this.opcode >= 0x4000 && this.opcode < 0x4FFF) {
-            //SNE -- 0x4xkk SKIP NEXT INSTRUCTION IF Vx != kk
+                break;
 
-            x = (this.opcode & 0x0F00) >> 8;
-            kk = this.opcode & 0x00FF;
+            case 0x7:
+                //ADD -- 0x7xkk SET Vx += kk
 
-            if (this.registers[x] !== kk)
-                this.pc += 4;
-            else
+                this.registers[x] += kk;
                 this.pc += 2;
 
-        } else if (this.opcode >= 0x5000 && this.opcode < 0x5FFF) {
-            //SE -- 0x5xy0 SKIP NEXT INSTRUCTION IF Vx = Vy
+                break;
 
-            x = (this.opcode & 0x0F00) >> 8;
-            y = (this.opcode & 0x00F0) >> 4;
+            case 0x8:
+                //BITWISE OPERATIONS, WHOLE LOT OF STUFF NEEDS DONE HERE
+                break;
 
-            if (this.registers[x] === this.registers[y])
-                this.pc += 4;
-            else
+            case 0x9:
+                //SNE -- 0x9xy0 SKIP NEXT INSTRUCTION IF Vx != Vy
+
+                if (this.registers[x] !== this.registers[y])
+                    this.pc += 4;
+                else
+                    this.pc += 2;
+
+                break;
+
+            case 0xA:
+                //LD -- 0xAnnn SET REGISTER I TO nnn
+
+                this.I = this.opcode & 0x0FFF;
                 this.pc += 2;
 
-        } else if (this.opcode >= 0x6000 && this.opcode < 0x6FFF) {
-            //LD -- 0x6xkk SET Vx = kk
+                break;
 
-            x = (this.opcode & 0x0F00) >> 8;
-            kk = this.opcode & 0x00FF;
+            case 0xB:
+                //JP -- 0xBnnn JUMP TO LOCATION nnn + V0
 
-            this.registers[x] = kk;
-
-            this.pc += 2;
-
-        } else if (this.opcode >= 0x7000 && this.opcode < 0x7FFF) {
-            //ADD -- 0x7xkk SET Vx += kk
-
-            x = (this.opcode & 0x0F00) >> 8;
-            kk = this.opcode & 0x00FF;
-
-            this.registers[x] += kk;
-
-            this.pc += 2;
-
-        } else if (this.opcode >= 0x8000 && this.opcode < 0x8FFF) {
-            //BITWISE OPERATIONS, WHOLE LOT OF STUFF NEEDS DONE HERE
-
-        } else if (this.opcode >= 0x9000 && this.opcode < 0x9FFF) {
-            //SNE -- 0x9xy0 SKIP NEXT INSTRUCTION IF Vx != Vy
-
-            x = (this.opcode & 0x0F00) >> 8;
-            y = (this.opcode & 0x00F0) >> 4;
-
-            if (this.registers[x] !== this.registers[y])
-                this.pc += 4;
-            else
+                this.pc = (this.opcode & 0x0FFF) + this.registers[0];
                 this.pc += 2;
 
-        } else if (this.opcode >= 0xA000 && this.opcode < 0xAFFF) {
-            //LD -- 0xAnnn SET REGISTER I TO nnn
+                break;
 
-            this.I = this.opcode & 0x0FFF;
-            this.pc += 2;
+            case 0xC:
+                //RND -- 0xCxkk SET Vx = RANDOM BYTE && kk
 
-        } else if (this.opcode >= 0xB000 && this.opcode < 0xBFFF) {
-            //JP -- 0xBnnn JUMP TO LOCATION nnn + V0
+                this.registers[x] = (Math.floor(Math.random()*256) & kk)
+                this.pc += 2;
 
-            this.pc = (this.opcode & 0x0FFF) + this.registers[0];
-            this.pc += 2;
+                break;
 
-        } else if (this.opcode >= 0xC000 && this.opcode < 0xCFFF) {
-            //RND -- 0xCxkk SET Vx = RANDOM BYTE && kk
-            x = (this.opcode & 0x0F00) >> 8;
-            kk = this.opcode & 0x00FF;
-            this.registers[x] = (Math.floor(Math.random()*256) & kk)
-            this.pc += 2;
+            case 0xD:
+                //DRW -- 0xDxyn DISPLAY N BYTE SPRITE STARTING AT MEMORY LOCATION I
+                //AT (Vx, Vy), set VF = COLLISION
 
-        } else if (this.opcode >= 0xD000 && this.opcode < 0xDFFF) {
-            //DRW -- 0xDxyn DISPLAY N BYTE SPRITE STARTING AT MEMORY LOCATION I
-            //AT (Vx, Vy), set VF = COLLISION
+                n = this.opcode & 0x000F;
 
-            x = (this.opcode & 0x0F00) >> 8;
-            y = (this.opcode & 0x00F0) >> 4;
-            n = this.opcode & 0x000F;
-
-            x = (this.registers[x]);
-            y = (this.registers[y]);
+                x = (this.registers[x]);
+                y = (this.registers[y]);
 
 
-            for (var i = 0; i < n; i++) {
-                byte = this.mem[this.I+i];
-                startOfRow = ((i+y) * 64) + x;
-                this.framebuffer[startOfRow+0] = this.framebuffer[startOfRow+0] ^ ((byte & 1) >> 0);
-                this.framebuffer[startOfRow+1] = this.framebuffer[startOfRow+1] ^ ((byte & 2) >> 1);
-                this.framebuffer[startOfRow+2] = this.framebuffer[startOfRow+2] ^ ((byte & 4) >> 2);
-                this.framebuffer[startOfRow+3] = this.framebuffer[startOfRow+3] ^ ((byte & 8) >> 3);
-                this.framebuffer[startOfRow+4] = this.framebuffer[startOfRow+4] ^ ((byte & 16) >> 4);
-                this.framebuffer[startOfRow+5] = this.framebuffer[startOfRow+5] ^ ((byte & 32) >> 5);
-                this.framebuffer[startOfRow+6] = this.framebuffer[startOfRow+6] ^ ((byte & 64) >> 6);
-                this.framebuffer[startOfRow+7] = this.framebuffer[startOfRow+7] ^ ((byte & 128) >> 7);
-            }
+                for (var i = 0; i < n; i++) {
+                    byte = this.mem[this.I+i];
+                    startOfRow = ((i+y) * 64) + x;
 
-            this.pc += 2;
+                    for (var j = 0; j < 8; j++) {
+                        this.framebuffer[startOfRow+j] = this.framebuffer[startOfRow+j] ^ ((byte & Math.pow(2,j)) >> j);
+                    }
+                }
 
-        } else if (this.opcode >= 0xE000 && this.opcode < 0xEFFF) {
-            //LD -- 0xExkk SET Vx = kk
+                this.pc += 2;
 
+                break;
+
+            case 0xE:
+
+                break;
+
+            case 0xF:
+
+                break;
         }
-
     };
 
     this.emulateCycle = function() {

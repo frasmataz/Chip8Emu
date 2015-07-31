@@ -43,25 +43,25 @@ updateLoop = function() {
 };
 
 updateScreen = function() {
-    var newTbody = document.createElement('tbody');
-
-    for (var i = 0; i < 0x1000; i+=16) {
-        var newRow = newTbody.insertRow(newTbody.rows.length);
-
-        var cell1 = newRow.insertCell(0);
-        cell1.innerHTML = ("000" + i.toString(16)).substr(-3).toUpperCase();
-
-        for (var j = 0; j < 16; j++) {
-            var cell2 = newRow.insertCell(j+1);
-            if (emu.mem[i+j] != null)
-                cell2.innerHTML = ("0" + emu.mem[i+j].toString(16)).substr(-2).toUpperCase();
-            else
-                cell2.innerHTML = '00';
-        }
-
-        var oldTbody = table.getElementsByTagName('tbody');
-        table.replaceChild(newTbody, oldTbody[0]);
-    }
+    // var newTbody = document.createElement('tbody');
+    //
+    // for (var i = 0; i < 0x1000; i+=16) {
+    //     var newRow = newTbody.insertRow(newTbody.rows.length);
+    //
+    //     var cell1 = newRow.insertCell(0);
+    //     cell1.innerHTML = ("000" + i.toString(16)).substr(-3).toUpperCase();
+    //
+    //     for (var j = 0; j < 16; j++) {
+    //         var cell2 = newRow.insertCell(j+1);
+    //         if (emu.mem[i+j] != null)
+    //             cell2.innerHTML = ("0" + emu.mem[i+j].toString(16)).substr(-2).toUpperCase();
+    //         else
+    //             cell2.innerHTML = '00';
+    //     }
+    //
+    //     var oldTbody = table.getElementsByTagName('tbody');
+    //     table.replaceChild(newTbody, oldTbody[0]);
+    // }
 
     var pccell = document.getElementById("pccell");
     pccell.innerHTML = ("000" + emu.pc.toString(16)).substr(-3).toUpperCase();
