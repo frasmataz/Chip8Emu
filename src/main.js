@@ -4,8 +4,12 @@
 
 var table;
 var emu = new chip8();
-var delay = 1000;
+var delay = 0;
 var Vcells = [];
+var display = document.getElementById('display');
+var context = display.getContext('2d');
+var DISPLAY_HEIGHT = 32;
+var DISPLAY_WIDTH = 64;
 
 function load (file) {
     var reader = new FileReader();
@@ -17,7 +21,7 @@ function load (file) {
         {
             emu.mem[l+0x200] = rawData.charCodeAt(l);
         }
-        
+
         table = document.getElementById("romTable");
 
         for (var k = 0; k<16; k++) {
@@ -69,5 +73,18 @@ updateScreen = function() {
             Vcells[k].innerHTML = ("0" + emu.registers[k].toString(16)).substr(-2).toUpperCase();
         else
             Vcells[k].innerHTML = "00";
+    }
+
+    for (var x=0; x<DISPLAY_WIDTH; x++) {
+        for (var y=0; y<DISPLAY_HEIGHT; y++) {
+            var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
+
+            if (pixel === 0)
+                context.fillStyle = 'black';
+            else
+                context.fillStyle = 'white';
+
+            context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
+        }
     }
 };

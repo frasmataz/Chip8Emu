@@ -5,8 +5,8 @@
 function chip8() {
     this.mem = [];
     this.registers = [];
-    this.framebuffer = [];
     this.stack = [];
+    this.framebuffer = [];
 
     this.pc = 0x200;
     this.opcode = 0;
@@ -17,6 +17,14 @@ function chip8() {
 
     this.drawFlag = false;
 
+    for (var i = 0; i < 64*32; i++) {
+        this.framebuffer[i] = 0;
+    }
+
+    for (var i = 0; i < 8; i++) {
+        this.registers[i]=0;
+    }
+
     this.execute = function() {
         var address;
         var x, y, kk;
@@ -25,6 +33,12 @@ function chip8() {
             this.pc+=2;
         } else if (this.opcode == 0x00E0) {
             //CLS -- 0x00E0 CLEAR SCREEN
+
+            for (var i = 0; i < 64*32; i++) {
+                this.framebuffer[i] = 0;
+            }
+
+            this.pc+=2;
 
         } else if (this.opcode == 0x00EE) {
             //RET -- 0x00EE RETURN FROM SUBROUTINE
@@ -53,7 +67,7 @@ function chip8() {
             x = (this.opcode & 0x0F00) >> 8;
             kk = this.opcode & 0x00FF;
 
-            if (this.registers[x] === kk)
+            if (this.registers[x] == kk)
                 this.pc += 4;
             else
                 this.pc += 2;
@@ -136,6 +150,29 @@ function chip8() {
         } else if (this.opcode >= 0xD000 && this.opcode < 0xDFFF) {
             //DRW -- 0xDxyn DISPLAY N BYTE SPRITE STARTING AT MEMORY LOCATION I
             //AT (Vx, Vy), set VF = COLLISION
+
+            x = (this.opcode & 0x0F00) >> 8;
+            y = (this.opcode & 0x00F0) >> 4;
+            n = this.opcode & 0x000F;
+
+            x = (this.registers[x]);
+            y = (this.registers[y]);
+
+
+            for (var i = 0; i < n; i++) {
+                byte = this.mem[this.I+i];
+                startOfRow = ((i+y) * 64) + x;
+                this.framebuffer[startOfRow+0] = this.framebuffer[startOfRow+0] ^ ((byte & 1) >> 0);
+                this.framebuffer[startOfRow+1] = this.framebuffer[startOfRow+1] ^ ((byte & 2) >> 1);
+                this.framebuffer[startOfRow+2] = this.framebuffer[startOfRow+2] ^ ((byte & 4) >> 2);
+                this.framebuffer[startOfRow+3] = this.framebuffer[startOfRow+3] ^ ((byte & 8) >> 3);
+                this.framebuffer[startOfRow+4] = this.framebuffer[startOfRow+4] ^ ((byte & 16) >> 4);
+                this.framebuffer[startOfRow+5] = this.framebuffer[startOfRow+5] ^ ((byte & 32) >> 5);
+                this.framebuffer[startOfRow+6] = this.framebuffer[startOfRow+6] ^ ((byte & 64) >> 6);
+                this.framebuffer[startOfRow+7] = this.framebuffer[startOfRow+7] ^ ((byte & 128) >> 7);
+            }
+
+            this.pc += 2;
 
         } else if (this.opcode >= 0xE000 && this.opcode < 0xEFFF) {
             //LD -- 0xExkk SET Vx = kk
