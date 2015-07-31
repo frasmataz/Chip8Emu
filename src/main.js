@@ -75,16 +75,18 @@ updateScreen = function() {
             Vcells[k].innerHTML = "00";
     }
 
-    for (var x=0; x<DISPLAY_WIDTH; x++) {
-        for (var y=0; y<DISPLAY_HEIGHT; y++) {
-            var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
+    if (emu.drawFlag) {
+        for (var x=0; x<DISPLAY_WIDTH; x++) {
+            for (var y=0; y<DISPLAY_HEIGHT; y++) {
+                var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
 
-            if (pixel === 0)
-                context.fillStyle = 'black';
-            else
-                context.fillStyle = 'white';
+                if (pixel === 0)
+                    context.fillStyle = 'black';
+                else
+                    context.fillStyle = 'white';
 
-            context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
+                context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
+            }
         }
     }
 };

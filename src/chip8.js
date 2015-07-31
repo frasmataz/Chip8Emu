@@ -26,6 +26,7 @@ function chip8() {
     }
 
     this.execute = function() {
+        drawFlag = false;
         var address;
         var x, y, kk;
 
@@ -176,6 +177,7 @@ function chip8() {
                 }
 
                 this.pc += 2;
+                this.drawFlag = true;
 
                 break;
 
