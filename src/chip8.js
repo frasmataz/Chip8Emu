@@ -169,7 +169,7 @@ function chip8() {
 
                 for (var i = 0; i < n; i++) {
                     byte = this.mem[this.I+i];
-                    startOfRow = ((i+y) * 64) + x;
+                    startOfRow = ((i+y) * 64) + x - 4;
 
                     for (var j = 0; j < 8; j++) {
                         this.framebuffer[startOfRow+j] = this.framebuffer[startOfRow+j] ^ ((byte & Math.pow(2,j)) >> j);
