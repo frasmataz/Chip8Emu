@@ -14,6 +14,7 @@ var prevMem;
 
 function load (file) {
     var reader = new FileReader();
+    emu = new chip8();
 
     reader.onload = function(e) {
         var rawData = reader.result;
@@ -73,8 +74,8 @@ updateScreen = function() {
     Icell.innerHTML = emu.I.toString(16).toUpperCase();
 
     for (var k = 0; k<16; k++) {
-        if (emu.registers[k] != null)
-            Vcells[k].innerHTML = ("0" + emu.registers[k].toString(16)).substr(-2).toUpperCase();
+        if (emu.V[k] != null)
+            Vcells[k].innerHTML = ("0" + emu.V[k].toString(16)).substr(-2).toUpperCase();
         else
             Vcells[k].innerHTML = "00";
     }
