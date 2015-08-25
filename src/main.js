@@ -17,6 +17,8 @@ function load (file) {
     emu = new chip8();
 
     reader.onload = function(e) {
+
+
         var rawData = reader.result;
 
         for (var l = 0; l<rawData.length; l++)
@@ -36,6 +38,13 @@ function load (file) {
     reader.readAsBinaryString(file);
 
 
+    document.onkeydown = function(e) {
+        emu.keystatus[emu.keycodes.indexOf(e.keyCode)] = true;
+    };
+
+    document.onkeyup = function(e) {
+        emu.keystatus[emu.keycodes.indexOf(e.keyCode)] = false;
+    };
 };
 
 updateLoop = function() {
