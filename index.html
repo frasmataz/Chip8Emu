@@ -35,13 +35,19 @@
                     <td>
                         <strong>PC:</strong>
                     </td>
-                    <td id="pccell"></td>
+                    <td id="pccell">
+                        <canvas id="pcCanvas" width="40" height="40">
+                        </canvas>
+                    </td>
                 </tr>
                 <tr>
                     <td>
                         <strong>I:</strong>
                     </td>
-                    <td id="Icell"></td>
+                    <td id="Icell">
+                        <canvas id="iCanvas" width="40" height="40">
+                        </canvas>
+                    </td>
                 </tr>
                 <tr>
                     <td><strong>Registers:</strong></td><td id="V0cell"></td>
@@ -62,8 +68,11 @@
                     <td id="VFcell"></td>
                 </tr>
             </table>
+
         </div>
 
+        <canvas id="registerCanvas" width="640" height="40">
+        </canvas>
         <div>
             <table id="romTable">
                 <thead>
@@ -75,6 +84,9 @@
                 <tbody></tbody>
             </table>
         </div>
+
+        <canvas id="ramCanvas" width="640" height="2560">
+        </canvas>
 
         <script src="src/chip8.js"></script>
         <script src="src/main.js"></script>
