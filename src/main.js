@@ -25,8 +25,11 @@ var ramContext = ramDisplay.getContext('2d');
 function load (file) {
     var reader = new FileReader();
     emu = new chip8();
+    prevMem = null;
 
     reader.onload = function(e) {
+
+
         var rawData = reader.result;
 
         for (var l = 0; l<rawData.length; l++)
@@ -45,7 +48,13 @@ function load (file) {
 
     reader.readAsBinaryString(file);
 
+    document.onkeydown = function(e) {
+        emu.keystatus[emu.keycodes.indexOf(e.keyCode)] = true;
+    };
 
+    document.onkeyup = function(e) {
+        emu.keystatus[emu.keycodes.indexOf(e.keyCode)] = false;
+    };
 }
 
 updateLoop = function() {
@@ -112,8 +121,9 @@ updateScreen = function() {
 
 
                 ramContext.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-                ramContext.fillRect((a % 16) * 20, Math.floor(a / 16) * 20, 20, 20);
+                ramContext.fillRect((a % 32) * 20, Math.floor(a / 32) * 20, 20, 20);
             }
+            prevMem = emu.mem;
         }
     } else {
         if(emu.mem != prevMem) {
@@ -136,6 +146,7 @@ updateScreen = function() {
                 var oldTbody = table.getElementsByTagName('tbody');
                 table.replaceChild(newTbody, oldTbody[0]);
             }
+            prevMem = emu.mem;
         }
 
         var pccell = document.getElementById("pccell");
@@ -151,5 +162,4 @@ updateScreen = function() {
         }
     }
 
-    prevMem = emu.mem;
 };

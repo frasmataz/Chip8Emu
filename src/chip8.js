@@ -3,6 +3,8 @@
  */
 
 function chip8() {
+    this.keycodes = [88,49,50,51,81,87,69,65,83,68,90,67,52,82,70,86];
+    this.keystatus = [];
     this.mem = [];
     this.V = [];
     this.stack = [];
@@ -15,16 +17,34 @@ function chip8() {
     this.delaytimer = 0;
     this.soundtimer = 0;
 
+    this.lastDelayTick = (new Date).getTime();
+
     this.drawFlag = false;
+
+    for (var i = 0; i < 0x10; i++) {
+        this.keystatus[i] = false;
+    }
 
     for (var i = 0; i < 64*32; i++) {
         this.framebuffer[i] = 0;
     }
 
-    for (var i = 0; i < 8; i++) {
-        this.V[i]=0;
+    for (var i = 0; i < 0x10; i++) {
+        this.V[i] = 0x0;
     }
 
+    for (var i = 0; i < 0x1000; i++) {
+        this.mem[i] = 0x0;
+    }
+
+
+    this.decdt = function() {
+        if (this.delaytimer > 0) {
+            this.delaytimer--;
+        }
+
+        this.lastDelayTick = (new Date).getTime();
+    };
 
     this.execute = function() {
         drawFlag = false;
@@ -54,7 +74,7 @@ function chip8() {
 
                 } else if (this.opcode == 0x00EE) {
                     //RET -- 0x00EE RETURN FROM SUBROUTINE
-                    this.pc = this.stack[--this.sp];
+                    this.pc = this.stack.pop();
 
 
                 } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
@@ -74,8 +94,7 @@ function chip8() {
             case 0x2:
                 //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
 
-                this.stack[this.sp] = this.pc; //Push current position onto stack
-                ++this.sp; //Increment stack pointer
+                this.stack.push(this.pc+2); //Push current position onto stack
                 this.pc = address; //Jump to address
                 break;
 
@@ -231,14 +250,48 @@ function chip8() {
                 var dx = (this.V[x]);
                 var dy = (this.V[y]);
 
+                var overflowtest = true;
+
+                while (overflowtest) {
+                    overflowtest = false;
+                    if(dx >= 64) {
+                        dx -= 64;
+                        overflowtest = true;
+                    }
+                    if(dx < 0) {
+                        dx += 64;
+                        overflowtest = true;
+                    }
+                    if(dy >= 32) {
+                        dy -= 32;
+                        overflowtest = true;
+                    }
+                    if(dy < 0) {
+                        dy += 32;
+                        overflowtest = true;
+                    }
+                }
+
                 for (var i = 0; i < n; i++) {
                     var byte = this.mem[this.I+i];
-                    var startOfRow = ((i+dy) * 64) + dx;
+                    var startOfRow = ((i+dy) * 64) + dx - 1;
+                    var collide = false;
 
                     for (var j = 0; j < 8; j++) {
+                        if ((this.framebuffer[startOfRow+(8-j)] == 1) && (((byte & Math.pow(2,j) == 1)) >> j)) {
+                            collide = true;
+                        }
+
                         this.framebuffer[startOfRow+(8-j)] ^= ((byte & Math.pow(2,j)) >> j);
                     }
                 }
+
+                if (collide) {
+                    this.V[0xF] = 1;
+                    console.log("COLLIDE");
+                }
+                else
+                    this.V[0xF] = 0;
 
                 // for (var i = 0; i < n; i++) {
                 //     var byte = this.mem[this.I + i]
@@ -255,10 +308,97 @@ function chip8() {
                 break;
 
             case 0xE:
-                this.pc+=2;
+
+                var mode = this.opcode & 0x00FF;
+
+                switch (mode) {
+                    case 0x9E:
+                        if (this.keystatus[this.V[x]])
+                            this.pc+=4;
+                        else
+                            this.pc+=2;
+                        break;
+
+                    case 0xA1:
+                        if (!(this.keystatus[this.V[x]]))
+                            this.pc+=4;
+                        else
+                            this.pc+=2;
+                        break;
+                }
+
                 break;
 
             case 0xF:
+                var mode = this.opcode & 0x00FF;
+
+                switch (mode) {
+                    case 0x07:
+                        //Vx == DT
+                        this.V[x] = this.delaytimer;
+                        break;
+
+                    case 0x0A:
+                        //WAIT FOR KEY PRESS, VALUE INTO Vx
+                        var keyPressed = -1;
+                        for (var i = 0; i < 0x10; i++) {
+                            if (this.keystatus[i]) {
+                                keyPressed = i;
+                            }
+                        }
+
+                        if (keyPressed != -1)
+                            this.V[x] = keyPressed;
+                        else
+                            this.pc -= 2; //CANCEL OUT PC STEP LATER
+                                          //...i know.. it's awful
+                        break;
+
+                    case 0x15:
+                        //DT = Vx
+                        this.delaytimer = this.V[x];
+                        break;
+
+                    case 0x18:
+                        //ST = Vx
+                        this.soundtimer = this.V[x];
+                        break;
+
+                    case 0x1E:
+                        //I = I + Vx
+                        this.I += this.V[x];
+                        break;
+
+                    case 0x29:
+                        //I = position of built-in char Vx
+                        this.I = this.V[x] * 5;
+                        break;
+
+                    case 0x33:
+                        //Store BCD of Vx in I, I+1 and I+2
+                        this.mem[this.I] = Math.floor(this.V[x] / 100) % 10;
+                        this.mem[this.I+1] = Math.floor(this.V[x] / 10) % 10;
+                        this.mem[this.I+2] = Math.floor(this.V[x] / 1) % 10;
+
+                        break;
+
+                    case 0x55:
+                        //Store registers in memory starting at I
+                        for (var i = 0x0; i < 0x10; i++) {
+                            this.mem[this.I+i] = this.V[x+i];
+                        }
+
+                        break;
+
+                    case 0x65:
+                        //Read registers from memory starting at I
+                        for (var i = 0x0; i < 0x10; i++) {
+                            this.V[x+i] = this.mem[this.I+i];
+                        }
+
+                        break;
+                }
+
                 this.pc+=2;
                 break;
         }
@@ -274,6 +414,10 @@ function chip8() {
 
         this.opcode = this.mem[this.pc] << 8 | this.mem[this.pc+1];
         this.execute();
+
+        if ((new Date).getTime() > (this.lastDelayTick + 17)) {
+            this.decdt();
+        }
     };
 
     this.setupSprites = function() {
@@ -373,11 +517,6 @@ function chip8() {
         this.mem[0x4D] = 0xF0; // F
         this.mem[0x4E] = 0x80;
         this.mem[0x4F] = 0x80;
-
-        for (var p = 0; p < 0x50; p++)
-        {
-            this.mem[p+0x300] = this.mem[p];
-        }
     };
 
     this.setupSprites();
