@@ -4,89 +4,103 @@
         <meta charset="UTF-8">
         <title>CPUEmu</title>
     </head>
-    <body>
-        <div>
-            <input type="file" id="files" name="files[]" multiple />
-            <output id="list"></output>
-            <script>
-                function handleFileSelect(evt) {
-                var files = evt.target.files; // FileList object
+    <body style="background-image: url('background.png')">
+        <div style="margin: 0 auto; width: 640px; background-color: #EEEEEE; padding: 10px; border-radius: 10px">
+            <div>
+                <h1>Chip8 Emulator</h1>
+                <p>Use the button below to select a Chip8 ROM to load and run.</p>
+                <p>Key mappings:</p>
+                <pre>
+Keyboard      Chip 8
+1 2 3 4       1 2 3 C
+Q W E R  ==>  4 5 6 D
+A S D F       7 8 9 E
+Z X C V       A 0 B F
+                </pre>
+            </div>
+            <div>
+                <input type="file" id="files" name="files[]" multiple />
+                <output id="list"></output>
+                <script>
+                    function handleFileSelect(evt) {
+                    var files = evt.target.files; // FileList object
 
-                // files is a FileList of File objects. List some properties.
-                var output = [];
-                for (var i = 0, f; f = files[i]; i++) {
-                    output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
-                    f.size, ' bytes, last modified: ',
-                    f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
-                    '</li>');
+                    // files is a FileList of File objects. List some properties.
+                    var output = [];
+                    for (var i = 0, f; f = files[i]; i++) {
+                        output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
+                        f.size, ' bytes, last modified: ',
+                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
+                        '</li>');
+                        }
+                        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+                        load(files.item(0));
                     }
-                    document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-                    load(files.item(0));
-                }
 
-                document.getElementById('files').addEventListener('change', handleFileSelect, false);
-            </script>
+                    document.getElementById('files').addEventListener('change', handleFileSelect, false);
+                </script>
 
-            <canvas id="display" width="640" height="320">
-            </canvas>
+                <canvas id="display" width="640" height="320">
+                </canvas>
 
-            <table id="registersTable">
-                <tr>
-                    <td>
-                        <strong>PC:</strong>
-                    </td>
-                    <td id="pccell">
-                        <canvas id="pcCanvas" width="40" height="40">
-                        </canvas>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <strong>I:</strong>
-                    </td>
-                    <td id="Icell">
-                        <canvas id="iCanvas" width="40" height="40">
-                        </canvas>
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>Registers:</strong></td><td id="V0cell"></td>
-                    <td id="V1cell"></td>
-                    <td id="V2cell"></td>
-                    <td id="V3cell"></td>
-                    <td id="V4cell"></td>
-                    <td id="V5cell"></td>
-                    <td id="V6cell"></td>
-                    <td id="V7cell"></td>
-                    <td id="V8cell"></td>
-                    <td id="V9cell"></td>
-                    <td id="VAcell"></td>
-                    <td id="VBcell"></td>
-                    <td id="VCcell"></td>
-                    <td id="VDcell"></td>
-                    <td id="VEcell"></td>
-                    <td id="VFcell"></td>
-                </tr>
-            </table>
-
-        </div>
-
-        <canvas id="registerCanvas" width="640" height="40">
-        </canvas>
-        <div>
-            <table id="romTable">
-                <thead>
+                <table id="registersTable">
                     <tr>
-                        <th>Address</th>
-                        <th colspan=16>Bytes</th>
+                        <td>
+                            <strong>PC:</strong>
+                        </td>
+                        <td id="pccell">
+                            <canvas id="pcCanvas" width="40" height="40">
+                            </canvas>
+                        </td>
                     </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+                    <tr>
+                        <td>
+                            <strong>I:</strong>
+                        </td>
+                        <td id="Icell">
+                            <canvas id="iCanvas" width="40" height="40">
+                            </canvas>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Registers:</strong></td><td id="V0cell"></td>
+                        <td id="V1cell"></td>
+                        <td id="V2cell"></td>
+                        <td id="V3cell"></td>
+                        <td id="V4cell"></td>
+                        <td id="V5cell"></td>
+                        <td id="V6cell"></td>
+                        <td id="V7cell"></td>
+                        <td id="V8cell"></td>
+                        <td id="V9cell"></td>
+                        <td id="VAcell"></td>
+                        <td id="VBcell"></td>
+                        <td id="VCcell"></td>
+                        <td id="VDcell"></td>
+                        <td id="VEcell"></td>
+                        <td id="VFcell"></td>
+                    </tr>
+                </table>
 
-        <canvas id="ramCanvas" width="640" height="2560">
-        </canvas>
+            </div>
+
+            <canvas id="registerCanvas" width="640" height="40">
+            </canvas>
+            <div>
+                <table id="romTable">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th colspan=16>Bytes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <canvas id="ramCanvas" width="640" height="2560">
+            </canvas>
+        </div>
 
         <script src="src/chip8.js"></script>
         <script src="src/main.js"></script>
