@@ -13,6 +13,9 @@ var DISPLAY_WIDTH = 64;
 var prevMem;
 var colorDisplay = true;
 var firstCycle;
+var reset = false;
+var file = null;
+var running = false;
 
 var regDisplay = document.getElementById('registerCanvas');
 var regContext = regDisplay.getContext('2d');
@@ -23,7 +26,7 @@ var iContext = iDisplay.getContext('2d');
 var ramDisplay = document.getElementById('ramCanvas');
 var ramContext = ramDisplay.getContext('2d');
 
-function load (file) {
+function load () {
     var reader = new FileReader();
     emu = new chip8();
     firstCycle = true;
@@ -58,10 +61,26 @@ function load (file) {
     };
 }
 
+doReset = function(newFile) {
+    file = newFile;
+    reset = true;
+
+    if(!running) {
+        running = true;
+        load();
+    }
+};
+
 updateLoop = function() {
     emu.emulateCycle();
     updateScreen();
-    setTimeout(updateLoop,delay);
+
+    if(reset) {
+        reset = false;
+        load();
+    } else {
+        setTimeout(updateLoop, delay);
+    }
 };
 
 updateScreen = function() {

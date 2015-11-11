@@ -34,7 +34,7 @@ Z X C V       A 0 B F
                         '</li>');
                         }
                         document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-                        load(files.item(0));
+                        doReset(files.item(0));
                     }
 
                     document.getElementById('files').addEventListener('change', handleFileSelect, false);
