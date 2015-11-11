@@ -1,1 +1,6 @@
 /workspace.xml
+/vcs.xml
+/modules.xml
+/misc.xml
+/Chip8Emu.iml
+*.name
