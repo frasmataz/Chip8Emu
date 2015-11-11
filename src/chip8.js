@@ -7,7 +7,7 @@ function chip8() {
     this.keystatus = [];
     this.mem = [];
     this.V = [];
-    this.stack = [];
+    this.stack = new Array(16);
     this.framebuffer = [];
 
     this.pc = 0x200;
@@ -44,8 +44,39 @@ function chip8() {
             this.delaytimer--;
         }
 
+        if (this.soundtimer > 0) {
+            this.soundtimer--;
+        }
+
         this.lastDelayTick = (new Date).getTime();
     };
+
+    this.setPixel = function(x, y) {
+        var location,
+            width = 64,
+            height = 32;
+
+        // If the pixel exceeds the dimensions,
+        // wrap it back around.
+        if (x > width) {
+            x -= width;
+        } else if (x < 0) {
+            x += width;
+        }
+
+        if (y > height) {
+            y -= height;
+        } else if (y < 0) {
+            y += height;
+        }
+
+        location = x + (y * width);
+
+        this.framebuffer[location] ^= 1;
+
+        return !this.framebuffer[location];
+    };
+
 
     this.execute = function() {
         this.drawFlag = false;
@@ -76,8 +107,8 @@ function chip8() {
 
                 } else if (this.opcode == 0x00EE) {
                     //RET -- 0x00EE RETURN FROM SUBROUTINE
-                    this.pc = this.stack.pop();
-
+                    this.pc = this.stack[--this.sp] + 2;
+                    console.log("POP");
 
                 } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
                     //SYS -- 0x0nnn CALL SUBROUTINE AT nnn
@@ -96,14 +127,16 @@ function chip8() {
             case 0x2:
                 //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
 
-                this.stack.push(this.pc+2); //Push current position onto stack
-                this.pc = address; //Jump to address
+                console.log("PUSH");
+                this.stack[this.sp] = this.pc;
+                this.sp++;
+                this.pc = address;
                 break;
 
             case 0x3:
                 //SE -- 0x3xkk SKIP NEXT INSTRUCTION IF Vx = kk
 
-                if (this.V[x] == kk)
+                if (this.V[x] === kk)
                     this.pc += 4;
                 else
                     this.pc += 2;
@@ -137,8 +170,13 @@ function chip8() {
 
             case 0x7:
                 //ADD -- 0x7xkk SET Vx += kk
+                var val = this.V[x] + kk;
 
-                this.V[x] += kk;
+                if (val > 255) {
+                    val -= 256;
+                }
+
+                this.V[x] = val;
                 this.pc += 2;
 
                 break;
@@ -146,9 +184,7 @@ function chip8() {
             case 0x8:
                 //BITWISE OPERATIONS, WHOLE LOT OF STUFF NEEDS DONE HERE
 
-                var mode = this.opcode & 0x000F;
-
-                switch (mode) {
+                switch (kk) {
                     case 0x0:
                         this.V[x] = this.V[y];
                         break;
@@ -162,46 +198,38 @@ function chip8() {
                         this.V[x] = this.V[x] ^ this.V[y];
                         break;
                     case 0x4:
-                        var result = this.V[x] + this.V[y];
-
-                        if (result > 0xFF) {
-                            this.V[0xF] = 1;
-                            result -= 0xFF;
-                        } else {
-                            this.V[0xF] = 0;
+                        this.V[x] += this.V[y];
+                        this.V[0xF] = +(this.V[x] > 255);
+                        if (this.V[x] > 255) {
+                            this.V[x] -= 256;
                         }
 
-                        this.V[x] = result;
                         break;
                     case 0x5:
-                        if (this.V[x] > this.V[y])
-                            this.V[0xF] = 1;
-                        else
-                            this.V[0xF] = 0;
-
-                        (this.V[x] -= this.V[y]) & 0xFF;
+                        this.V[0xF] = +(this.V[x] > this.V[y]);
+                        this.V[x] -= this.V[y];
+                        if (this.V[x] < 0) {
+                            this.V[x] += 256;
+                        }
 
                         break;
                     case 0x6:
                         this.V[0xF] = (this.opcode & 0x0001);
-                        this.V[x] = Math.floor(this.V[x] / 2);
+                        this.V[x] >>= 1;
                         break;
                     case 0x7:
-                        if (this.V[y] > this.V[x])
-                            this.V[0xF] = 1;
-                        else
-                            this.V[0xF] = 0;
-
-                        this.V[x] = (this.V[y] - this.V[x]) & 0xFF;
+                        this.V[0xF] = +(this.V[y] > this.V[x]);
+                        this.V[x] = this.V[y] - this.V[x];
+                        if (this.V[x] < 0) {
+                            this.V[x] += 256;
+                        }
                         break;
                     case 0xE:
-                        if (this.V[x] & 0x80)
-                            this.V[0xF] = 1;
-                        else
-                            this.V[0xF] = 0;
-
-                        this.V[x] = (this.V[x] *= 2) & 0xFF;
-
+                        this.V[0xF] = +(this.V[x] & 0x80);
+                        this.V[x] <<= 1;
+                        if (this.V[x] > 255) {
+                            this.V[x] -= 256;
+                        }
                         break;
                 }
 
@@ -247,73 +275,31 @@ function chip8() {
                 //DRW -- 0xDxyn DISPLAY N BYTE SPRITE STARTING AT MEMORY LOCATION I
                 //AT (Vx, Vy), set VF = COLLISION
 
-                var n = this.opcode & 0x000F;
+                this.V[0xF] = 0;
 
-                var dx = (this.V[x]);
-                var dy = (this.V[y]);
+                var height = this.opcode & 0x000F;
+                var registerX = this.V[x];
+                var registerY = this.V[y];
+                var spr;
 
-                var overflowtest = true;
-
-                while (overflowtest) {
-                    overflowtest = false;
-                    if(dx >= 64) {
-                        dx -= 64;
-                        overflowtest = true;
-                    }
-                    if(dx < 0) {
-                        dx += 64;
-                        overflowtest = true;
-                    }
-                    if(dy >= 32) {
-                        dy -= 32;
-                        overflowtest = true;
-                    }
-                    if(dy < 0) {
-                        dy += 32;
-                        overflowtest = true;
-                    }
-                }
-
-                for (var i = 0; i < n; i++) {
-                    var byte = this.mem[this.I+i];
-                    var startOfRow = ((i+dy) * 64) + dx - 1;
-                    var collide = false;
-
-                    for (var j = 0; j < 8; j++) {
-                        if ((this.framebuffer[startOfRow+(8-j)] == 1) && (((byte & Math.pow(2,j) == 1)) >> j)) {
-                            collide = true;
+                for (y = 0; y < height; y++) {
+                    spr = this.mem[this.I + y];
+                    for (x = 0; x < 8; x++) {
+                        if ((spr & 0x80) > 0) {
+                            if (this.setPixel(registerX + x, registerY + y)) {
+                                this.V[0xF] = 1;
+                            }
                         }
-
-                        this.framebuffer[startOfRow+(8-j)] ^= ((byte & Math.pow(2,j)) >> j);
+                        spr <<= 1;
                     }
+                    this.drawFlag = true;
                 }
 
-                if (collide) {
-                    this.V[0xF] = 1;
-                    console.log("COLLIDE");
-                }
-                else
-                    this.V[0xF] = 0;
-
-                // for (var i = 0; i < n; i++) {
-                //     var byte = this.mem[this.I + i]
-                //     var buffer = (64 * (this.V[y] + i)) + this.V[x];
-                //
-                //     for (var j = 0; j < 8; j++) {
-                //         this.framebuffer[buffer + j] ^= (Math.pow(2,j) & (byte >> j) >> j);
-                //     }
-                // }
-
-                this.pc += 2;
-                this.drawFlag = true;
-
+                this.pc+=2;
                 break;
 
             case 0xE:
-
-                var mode = this.opcode & 0x00FF;
-
-                switch (mode) {
+                switch (kk) {
                     case 0x9E:
                         if (this.keystatus[this.V[x]])
                             this.pc+=4;
@@ -332,9 +318,7 @@ function chip8() {
                 break;
 
             case 0xF:
-                var mode = this.opcode & 0x00FF;
-
-                switch (mode) {
+                switch (kk) {
                     case 0x07:
                         //Vx == DT
                         this.V[x] = this.delaytimer;
@@ -378,9 +362,12 @@ function chip8() {
 
                     case 0x33:
                         //Store BCD of Vx in I, I+1 and I+2
-                        this.mem[this.I] = Math.floor(this.V[x] / 100) % 10;
-                        this.mem[this.I+1] = Math.floor(this.V[x] / 10) % 10;
-                        this.mem[this.I+2] = Math.floor(this.V[x] / 1) % 10;
+                        var number = this.V[x];
+
+                        for (i = 3; i > 0; i--) {
+                            this.mem[this.i + i - 1] = parseInt(number % 10);
+                            number /= 10;
+                        }
 
                         this.ramUpdateFlag=true;
                         break;
@@ -388,7 +375,7 @@ function chip8() {
                     case 0x55:
                         //Store registers in memory starting at I
                         for (var i = 0x0; i < 0x10; i++) {
-                            this.mem[this.I+i] = this.V[x+i];
+                            this.mem[this.I+i] = this.V[i];
                         }
 
                         this.ramUpdateFlag=true;
@@ -397,7 +384,7 @@ function chip8() {
                     case 0x65:
                         //Read registers from memory starting at I
                         for (var i = 0x0; i < 0x10; i++) {
-                            this.V[x+i] = this.mem[this.I+i];
+                            this.V[i] = this.mem[this.I+i];
                         }
 
                         break;
