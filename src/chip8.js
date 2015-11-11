@@ -20,6 +20,7 @@ function chip8() {
     this.lastDelayTick = (new Date).getTime();
 
     this.drawFlag = false;
+    this.ramUpdateFlag = false;
 
     for (var i = 0; i < 0x10; i++) {
         this.keystatus[i] = false;
@@ -47,7 +48,8 @@ function chip8() {
     };
 
     this.execute = function() {
-        drawFlag = false;
+        this.drawFlag = false;
+        this.ramUpdateFlag=false;
         var address;
         var x, y, kk;
 
@@ -56,7 +58,7 @@ function chip8() {
         kk = this.opcode & 0x00FF;
         address = this.opcode & 0x0FFF;
 
-        var opcodeClass = (this.opcode & 0xF000) >> 12
+        var opcodeClass = (this.opcode & 0xF000) >> 12;
 
         switch (opcodeClass) {
 
@@ -380,6 +382,7 @@ function chip8() {
                         this.mem[this.I+1] = Math.floor(this.V[x] / 10) % 10;
                         this.mem[this.I+2] = Math.floor(this.V[x] / 1) % 10;
 
+                        this.ramUpdateFlag=true;
                         break;
 
                     case 0x55:
@@ -388,6 +391,7 @@ function chip8() {
                             this.mem[this.I+i] = this.V[x+i];
                         }
 
+                        this.ramUpdateFlag=true;
                         break;
 
                     case 0x65:

@@ -12,6 +12,7 @@ var DISPLAY_HEIGHT = 32;
 var DISPLAY_WIDTH = 64;
 var prevMem;
 var colorDisplay = true;
+var firstCycle;
 
 var regDisplay = document.getElementById('registerCanvas');
 var regContext = regDisplay.getContext('2d');
@@ -25,7 +26,7 @@ var ramContext = ramDisplay.getContext('2d');
 function load (file) {
     var reader = new FileReader();
     emu = new chip8();
-    prevMem = null;
+    firstCycle = true;
 
     reader.onload = function(e) {
 
@@ -64,7 +65,7 @@ updateLoop = function() {
 };
 
 updateScreen = function() {
-    if (emu.drawFlag) {
+    if (emu.drawFlag || firstCycle) {
         for (var x=0; x<DISPLAY_WIDTH; x++) {
             for (var y=0; y<DISPLAY_HEIGHT; y++) {
                 var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
@@ -111,7 +112,7 @@ updateScreen = function() {
         iContext.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
         iContext.fillRect(0, 0, (v + 1) * 40, 40);
 
-        if(emu.mem != prevMem) {
+        if(emu.ramUpdateFlag || firstCycle) {
             for (var a = 0; a < 0x1000; a++) {
                 byte = emu.mem[a];
 
@@ -123,10 +124,9 @@ updateScreen = function() {
                 ramContext.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
                 ramContext.fillRect((a % 32) * 20, Math.floor(a / 32) * 20, 20, 20);
             }
-            prevMem = emu.mem;
         }
     } else {
-        if(emu.mem != prevMem) {
+        if(emu.ramUpdateFlag || firstCycle) {
             var newTbody = document.createElement('tbody');
 
             for (var i = 0; i < 0x1000; i+=16) {
@@ -146,7 +146,6 @@ updateScreen = function() {
                 var oldTbody = table.getElementsByTagName('tbody');
                 table.replaceChild(newTbody, oldTbody[0]);
             }
-            prevMem = emu.mem;
         }
 
         var pccell = document.getElementById("pccell");
@@ -161,5 +160,8 @@ updateScreen = function() {
                 Vcells[k].innerHTML = "00";
         }
     }
+
+    if(firstCycle)
+        firstCycle=false;
 
 };
