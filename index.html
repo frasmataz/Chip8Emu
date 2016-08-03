@@ -19,19 +19,64 @@ Z X C V       A 0 B F
                 </pre>
             </div>
             <div>
+                <p>Pick an example ROM..</p>
+                <select id="builtinRomPicker">
+                    <option value="roms/15PUZZLE">15PUZZLE</option>
+                    <option value="roms/BLINKY">BLINKY</option>
+                    <option value="roms/BLITZ">BLITZ</option>
+                    <option value="roms/BRIX">BRIX</option>
+                    <option value="roms/CONNECT4">CONNECT4</option>
+                    <option value="roms/GUESS">GUESS</option>
+                    <option value="roms/HIDDEN">HIDDEN</option>
+                    <option value="roms/INVADERS">INVADERS</option>
+                    <option value="roms/KALEID">KALEID</option>
+                    <option value="roms/MAZE">MAZE</option>
+                    <option value="roms/MERLIN">MERLIN</option>
+                    <option value="roms/MISSILE">MISSILE</option>
+                    <option value="roms/PONG">PONG</option>
+                    <option value="roms/PONG2">PONG2</option>
+                    <option value="roms/PUZZLE">PUZZLE</option>
+                    <option value="roms/SYZYGY">SYZYGY</option>
+                    <option value="roms/TANK">TANK</option>
+                    <option value="roms/TETRIS">TETRIS</option>
+                    <option value="roms/TICTAC">TICTAC</option>
+                    <option value="roms/UFO">UFO</option>
+                    <option value="roms/VBRIX">VBRIX</option>
+                    <option value="roms/VERS">VERS</option>
+                    <option value="roms/WIPEOFF">WIPEOFF</option>
+                </select>
+                <button type=button onclick="loadBuiltinRom()">Load!</button><br />
+                <p>..or load a ROM from your PC</p>
                 <input type="file" id="files" name="files[]" multiple />
                 <output id="list"></output>
                 <script>
-                    function handleFileSelect(evt) {
-                    var files = evt.target.files; // FileList object
+                    function loadBuiltinRom() {
+                        var element = document.getElementById("builtinRomPicker");
+                        var selectedValue = element.options[element.selectedIndex].value;
 
-                    // files is a FileList of File objects. List some properties.
-                    var output = [];
-                    for (var i = 0, f; f = files[i]; i++) {
-                        output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
-                        f.size, ' bytes, last modified: ',
-                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
-                        '</li>');
+                        var blob = null;
+                        var xhr = new XMLHttpRequest();
+                        xhr.open("GET", selectedValue);
+                        xhr.responseType = "blob";//force the HTTP response, response-type header to be blob
+                        xhr.onload = function()
+                        {
+                            blob = xhr.response;//xhr.response is now a blob object
+                        }
+                        xhr.send();
+
+                        doReset(blob);
+                    }
+
+                    function handleFileSelect(evt) {
+                        var files = evt.target.files; // FileList object
+
+                        // files is a FileList of File objects. List some properties.
+                        var output = [];
+                        for (var i = 0, f; f = files[i]; i++) {
+                            output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
+                            f.size, ' bytes, last modified: ',
+                            f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
+                            '</li>');
                         }
                         document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
                         doReset(files.item(0));
