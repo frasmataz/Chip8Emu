@@ -82,11 +82,12 @@ function chip8() {
         this.drawFlag = false;
         this.ramUpdateFlag=false;
         var address;
-        var x, y, kk;
+        var x, y, kk, n;
 
         x = (this.opcode & 0x0F00) >> 8;
         y = (this.opcode & 0x00F0) >> 4;
         kk = this.opcode & 0x00FF;
+        n = this.opcode & 0x000F;
         address = this.opcode & 0x0FFF;
 
         var opcodeClass = (this.opcode & 0xF000) >> 12;
@@ -108,7 +109,6 @@ function chip8() {
                 } else if (this.opcode == 0x00EE) {
                     //RET -- 0x00EE RETURN FROM SUBROUTINE
                     this.pc = this.stack[--this.sp] + 2;
-                    console.log("POP");
 
                 } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
                     //SYS -- 0x0nnn CALL SUBROUTINE AT nnn
@@ -127,7 +127,6 @@ function chip8() {
             case 0x2:
                 //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
 
-                console.log("PUSH");
                 this.stack[this.sp] = this.pc;
                 this.sp++;
                 this.pc = address;
@@ -184,7 +183,7 @@ function chip8() {
             case 0x8:
                 //BITWISE OPERATIONS, WHOLE LOT OF STUFF NEEDS DONE HERE
 
-                switch (kk) {
+                switch (n) {
                     case 0x0:
                         this.V[x] = this.V[y];
                         break;
@@ -214,7 +213,7 @@ function chip8() {
 
                         break;
                     case 0x6:
-                        this.V[0xF] = (this.opcode & 0x0001);
+                        this.V[0xF] = (this.V[x] & 0x01);
                         this.V[x] >>= 1;
                         break;
                     case 0x7:
@@ -225,7 +224,7 @@ function chip8() {
                         }
                         break;
                     case 0xE:
-                        this.V[0xF] = +(this.V[x] & 0x80);
+                        this.V[0xF] = (this.V[x] & 0x80 == 0x80 ? 1 : 0);
                         this.V[x] <<= 1;
                         if (this.V[x] > 255) {
                             this.V[x] -= 256;
@@ -259,8 +258,6 @@ function chip8() {
                 //JP -- 0xBnnn JUMP TO LOCATION nnn + V0
 
                 this.pc = (this.opcode & 0x0FFF) + this.V[0];
-                this.pc += 2;
-
                 break;
 
             case 0xC:
@@ -362,11 +359,9 @@ function chip8() {
 
                     case 0x33:
                         //Store BCD of Vx in I, I+1 and I+2
-                        var number = this.V[x];
-
-                        for (i = 3; i > 0; i--) {
-                            this.mem[this.i + i - 1] = parseInt(number % 10);
-                            number /= 10;
+                        var numberStr = this.V[x].toString();
+                        for (i = 0; i < 3; i++) {
+                            this.mem[this.I + i] = parseInt(numberStr[i]);
                         }
 
                         this.ramUpdateFlag=true;
