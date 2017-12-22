@@ -19,7 +19,6 @@ function chip8() {
 
     this.lastDelayTick = (new Date).getTime();
 
-    this.drawFlag = false;
     this.ramUpdateFlag = false;
 
     for (var i = 0; i < 0x10; i++) {
@@ -79,7 +78,6 @@ function chip8() {
 
 
     this.execute = function() {
-        this.drawFlag = false;
         this.ramUpdateFlag=false;
         var address;
         var x, y, kk, n;
@@ -289,7 +287,6 @@ function chip8() {
                         }
                         spr <<= 1;
                     }
-                    this.drawFlag = true;
                 }
 
                 this.pc+=2;

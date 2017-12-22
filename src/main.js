@@ -4,6 +4,7 @@
 
 var table;
 var emu = new chip8();
+var frameskip = 32;
 var delay = 0;
 var Vcells = [];
 var display = document.getElementById('display');
@@ -340,10 +341,10 @@ runTest = function() {
 
     //Ex9E SKP Vx
     //NO TEST
-    
+
     //ExA1 SKNP Vx
     //NO TEST
-    
+
     //Fx07 LD Vx, DT
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -360,7 +361,7 @@ runTest = function() {
 
     //Fx0A LD Vx, K
     //NO TEST
-    
+
     //Fx15 LD DT, Vx
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -374,7 +375,7 @@ runTest = function() {
         printRegs();
     }
     emu={}
-    
+
     //Fx18 LD ST, Vx
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -388,7 +389,7 @@ runTest = function() {
         printRegs();
     }
     emu={}
-    
+
     //Fx1E ADD I, Vx
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -403,7 +404,7 @@ runTest = function() {
         printRegs();
     }
     emu={}
-    
+
     //Fx29 LD F, Vx
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -417,7 +418,7 @@ runTest = function() {
         printRegs();
     }
     emu={}
-    
+
     //Fx33 LD B, Vx
     emu = new chip8();
     emu.mem[0x200]=0xF0;
@@ -509,7 +510,10 @@ doReset = function(newFile) {
 };
 
 updateLoop = function() {
-    emu.emulateCycle();
+    for (var i=0; i < frameskip; i++) {
+        emu.emulateCycle();
+    }
+
     updateScreen();
 
     if(reset) {
@@ -520,19 +524,31 @@ updateLoop = function() {
     }
 };
 
+speedup = function() {
+    if (frameskip * 2 <= 4096)
+        frameskip = frameskip * 2;
+
+    document.getElementById('speedlabel').innerHTML = "Speed: " + frameskip;
+};
+
+speeddown = function() {
+    if (frameskip / 2 >= 1)
+        frameskip = frameskip / 2;
+
+    document.getElementById('speedlabel').innerHTML = "Speed: " + frameskip;
+};
+
 updateScreen = function() {
-    if (emu.drawFlag || firstCycle) {
-        for (var x=0; x<DISPLAY_WIDTH; x++) {
-            for (var y=0; y<DISPLAY_HEIGHT; y++) {
-                var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
+    for (var x=0; x<DISPLAY_WIDTH; x++) {
+        for (var y=0; y<DISPLAY_HEIGHT; y++) {
+            var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
 
-                if (pixel === 0)
-                    context.fillStyle = 'black';
-                else
-                    context.fillStyle = 'white';
+            if (pixel === 0)
+                context.fillStyle = 'black';
+            else
+                context.fillStyle = 'white';
 
-                context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
-            }
+            context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
         }
     }
 
@@ -617,7 +633,9 @@ updateScreen = function() {
         }
     }
 
-    if(firstCycle)
+    if(firstCycle) {
         firstCycle=false;
+        document.getElementById('speedlabel').innerHTML = "Speed: " + frameskip;
+    }
 
 };
