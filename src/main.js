@@ -541,7 +541,7 @@ speeddown = function() {
 updateScreen = function() {
     for (var x=0; x<DISPLAY_WIDTH; x++) {
         for (var y=0; y<DISPLAY_HEIGHT; y++) {
-            var pixel = emu.framebuffer[(y*DISPLAY_WIDTH)+x];
+            var pixel = emu.framebuffer[x][y];
 
             if (pixel === 0)
                 context.fillStyle = 'black';

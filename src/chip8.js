@@ -8,7 +8,7 @@ function chip8() {
     this.mem = [];
     this.V = [];
     this.stack = new Array(16);
-    this.framebuffer = [];
+    this.framebuffer = createArray(64, 32);
 
     this.pc = 0x200;
     this.opcode = 0;
@@ -23,10 +23,6 @@ function chip8() {
 
     for (var i = 0; i < 0x10; i++) {
         this.keystatus[i] = false;
-    }
-
-    for (var i = 0; i < 64*32; i++) {
-        this.framebuffer[i] = 0;
     }
 
     for (var i = 0; i < 0x10; i++) {
@@ -50,342 +46,110 @@ function chip8() {
         this.lastDelayTick = (new Date).getTime();
     };
 
-    this.setPixel = function(x, y) {
-        var location,
-            width = 64,
-            height = 32;
-
-        // If the pixel exceeds the dimensions,
-        // wrap it back around.
-        if (x > width) {
-            x -= width;
-        } else if (x < 0) {
-            x += width;
-        }
-
-        if (y > height) {
-            y -= height;
-        } else if (y < 0) {
-            y += height;
-        }
-
-        location = x + (y * width);
-
-        this.framebuffer[location] ^= 1;
-
-        return !this.framebuffer[location];
-    };
-
-
-    this.execute = function() {
-        this.ramUpdateFlag=false;
-        var address;
+    this.execute = function(opcode) {
+        this.ramUpdateFlag=false; //
+        var addr;
         var x, y, kk, n;
 
-        x = (this.opcode & 0x0F00) >> 8;
-        y = (this.opcode & 0x00F0) >> 4;
-        kk = this.opcode & 0x00FF;
-        n = this.opcode & 0x000F;
-        address = this.opcode & 0x0FFF;
-
-        var opcodeClass = (this.opcode & 0xF000) >> 12;
-
-        switch (opcodeClass) {
-
-            case 0x0:
-                if (this.opcode == 0x0) {
-                    this.pc+=2;
-                } else if (this.opcode == 0x00E0) {
-                    //CLS -- 0x00E0 CLEAR SCREEN
-
-                    for (var i = 0; i < 64*32; i++) {
-                        this.framebuffer[i] = 0;
-                    }
-
-                    this.pc+=2;
-
-                } else if (this.opcode == 0x00EE) {
-                    //RET -- 0x00EE RETURN FROM SUBROUTINE
-                    this.pc = this.stack[--this.sp] + 2;
-
-                } else if (this.opcode >= 0x0000 && this.opcode < 0x0FFF) {
-                    //SYS -- 0x0nnn CALL SUBROUTINE AT nnn
-
-                    //NOT IMPLEMENTED
-                }
-
-                break;
-
-            case 0x1:
-                //JP -- 0x1nnn JUMP TO LOCATION nnn
-
-                this.pc = address;
-                break;
-
-            case 0x2:
-                //CALL -- 0x2nnn CALL FUNCTION AT LOCATION nnn
-
-                this.stack[this.sp] = this.pc;
-                this.sp++;
-                this.pc = address;
-                break;
-
-            case 0x3:
-                //SE -- 0x3xkk SKIP NEXT INSTRUCTION IF Vx = kk
-
-                if (this.V[x] === kk)
-                    this.pc += 4;
-                else
-                    this.pc += 2;
-                break;
-
-            case 0x4:
-                //SNE -- 0x4xkk SKIP NEXT INSTRUCTION IF Vx != kk
-
-                if (this.V[x] !== kk)
-                    this.pc += 4;
-                else
-                    this.pc += 2;
-                break;
-
-            case 0x5:
-                //SE -- 0x5xy0 SKIP NEXT INSTRUCTION IF Vx = Vy
-
-                if (this.V[x] === this.V[y])
-                    this.pc += 4;
-                else
-                    this.pc += 2;
-                break;
-
-            case 0x6:
-                //LD -- 0x6xkk SET Vx = kk
-
-                this.V[x] = kk;
-                this.pc += 2;
-
-                break;
-
-            case 0x7:
-                //ADD -- 0x7xkk SET Vx += kk
-                var val = this.V[x] + kk;
-
-                if (val > 255) {
-                    val -= 256;
-                }
-
-                this.V[x] = val;
-                this.pc += 2;
-
-                break;
-
-            case 0x8:
-                //BITWISE OPERATIONS, WHOLE LOT OF STUFF NEEDS DONE HERE
-
-                switch (n) {
-                    case 0x0:
-                        this.V[x] = this.V[y];
-                        break;
-                    case 0x1:
-                        this.V[x] = this.V[x] | this.V[y];
-                        break;
-                    case 0x2:
-                        this.V[x] = this.V[x] & this.V[y];
-                        break;
-                    case 0x3:
-                        this.V[x] = this.V[x] ^ this.V[y];
-                        break;
-                    case 0x4:
-                        this.V[x] += this.V[y];
-                        this.V[0xF] = +(this.V[x] > 255);
-                        if (this.V[x] > 255) {
-                            this.V[x] -= 256;
-                        }
-
-                        break;
-                    case 0x5:
-                        this.V[0xF] = +(this.V[x] > this.V[y]);
-                        this.V[x] -= this.V[y];
-                        if (this.V[x] < 0) {
-                            this.V[x] += 256;
-                        }
-
-                        break;
-                    case 0x6:
-                        this.V[0xF] = (this.V[x] & 0x01);
-                        this.V[x] >>= 1;
-                        break;
-                    case 0x7:
-                        this.V[0xF] = +(this.V[y] > this.V[x]);
-                        this.V[x] = this.V[y] - this.V[x];
-                        if (this.V[x] < 0) {
-                            this.V[x] += 256;
-                        }
-                        break;
-                    case 0xE:
-                        this.V[0xF] = (this.V[x] & 0x80 == 0x80 ? 1 : 0);
-                        this.V[x] <<= 1;
-                        if (this.V[x] > 255) {
-                            this.V[x] -= 256;
-                        }
-                        break;
-                }
-
-                this.pc += 2;
-
-                break;
-
-            case 0x9:
-                //SNE -- 0x9xy0 SKIP NEXT INSTRUCTION IF Vx != Vy
-
-                if (this.V[x] !== this.V[y])
-                    this.pc += 4;
-                else
-                    this.pc += 2;
-
-                break;
-
-            case 0xA:
-                //LD -- 0xAnnn SET REGISTER I TO nnn
-
-                this.I = this.opcode & 0x0FFF;
-                this.pc += 2;
-
-                break;
-
-            case 0xB:
-                //JP -- 0xBnnn JUMP TO LOCATION nnn + V0
-
-                this.pc = (this.opcode & 0x0FFF) + this.V[0];
-                break;
-
-            case 0xC:
-                //RND -- 0xCxkk SET Vx = RANDOM BYTE && kk
-
-                this.V[x] = (Math.floor(Math.random()*256) & kk)
-                this.pc += 2;
-
-                break;
-
-            case 0xD:
-                //DRW -- 0xDxyn DISPLAY N BYTE SPRITE STARTING AT MEMORY LOCATION I
-                //AT (Vx, Vy), set VF = COLLISION
-
-                this.V[0xF] = 0;
-
-                var height = this.opcode & 0x000F;
-                var registerX = this.V[x];
-                var registerY = this.V[y];
-                var spr;
-
-                for (y = 0; y < height; y++) {
-                    spr = this.mem[this.I + y];
-                    for (x = 0; x < 8; x++) {
-                        if ((spr & 0x80) > 0) {
-                            if (this.setPixel(registerX + x, registerY + y)) {
-                                this.V[0xF] = 1;
-                            }
-                        }
-                        spr <<= 1;
-                    }
-                }
-
-                this.pc+=2;
-                break;
-
-            case 0xE:
-                switch (kk) {
-                    case 0x9E:
-                        if (this.keystatus[this.V[x]])
-                            this.pc+=4;
-                        else
-                            this.pc+=2;
-                        break;
-
-                    case 0xA1:
-                        if (!(this.keystatus[this.V[x]]))
-                            this.pc+=4;
-                        else
-                            this.pc+=2;
-                        break;
-                }
-
-                break;
-
-            case 0xF:
-                switch (kk) {
-                    case 0x07:
-                        //Vx == DT
-                        this.V[x] = this.delaytimer;
-                        break;
-
-                    case 0x0A:
-                        //WAIT FOR KEY PRESS, VALUE INTO Vx
-                        var keyPressed = -1;
-                        for (var i = 0; i < 0x10; i++) {
-                            if (this.keystatus[i]) {
-                                keyPressed = i;
-                            }
-                        }
-
-                        if (keyPressed != -1)
-                            this.V[x] = keyPressed;
-                        else
-                            this.pc -= 2; //CANCEL OUT PC STEP LATER
-                                          //...i know.. it's awful
-                        break;
-
-                    case 0x15:
-                        //DT = Vx
-                        this.delaytimer = this.V[x];
-                        break;
-
-                    case 0x18:
-                        //ST = Vx
-                        this.soundtimer = this.V[x];
-                        break;
-
-                    case 0x1E:
-                        //I = I + Vx
-                        this.I += this.V[x];
-                        break;
-
-                    case 0x29:
-                        //I = position of built-in char Vx
-                        this.I = this.V[x] * 5;
-                        break;
-
-                    case 0x33:
-                        //Store BCD of Vx in I, I+1 and I+2
-                        var numberStr = this.V[x].toString();
-                        for (i = 0; i < 3; i++) {
-                            this.mem[this.I + i] = parseInt(numberStr[i]);
-                        }
-
-                        this.ramUpdateFlag=true;
-                        break;
-
-                    case 0x55:
-                        //Store registers in memory starting at I
-                        for (var i = 0x0; i < 0x10; i++) {
-                            this.mem[this.I+i] = this.V[i];
-                        }
-
-                        this.ramUpdateFlag=true;
-                        break;
-
-                    case 0x65:
-                        //Read registers from memory starting at I
-                        for (var i = 0x0; i < 0x10; i++) {
-                            this.V[i] = this.mem[this.I+i];
-                        }
-
-                        break;
-                }
-
-                this.pc+=2;
-                break;
+        x = (opcode & 0x0F00) >> 8;
+        y = (opcode & 0x00F0) >> 4;
+        kk = opcode & 0x00FF;
+        n = opcode & 0x000F;
+        addr = opcode & 0x0FFF;
+
+        // Decode instruction
+        if ((opcode & 0xF000) === 0x0000) {
+            if (opcode === 0x00E0) {
+                this.CLS();
+            } else if (opcode === 0x00EE) {
+                this.RET();
+            } else {
+                this.SYS_addr(addr);
+            }
+        } else if ((opcode & 0xF000) === 0x1000) {
+            this.JP_addr(addr);
+        } else if ((opcode & 0xF000) === 0x2000) {
+            this.CALL_addr(addr);
+        } else if ((opcode & 0xF000) === 0x3000) {
+            this.SE_Vx_byte(x, kk);
+        } else if ((opcode & 0xF000) === 0x4000) {
+            this.SNE_Vx_byte(x, kk);
+        } else if ((opcode & 0xF000) === 0x5000) {
+            this.SE_Vx_Vy(x, y);
+        } else if ((opcode & 0xF000) === 0x6000) {
+            this.LD_Vx_byte(x, kk);
+        } else if ((opcode & 0xF000) === 0x7000) {
+            this.ADD_Vx_byte(x, kk);
+        } else if ((opcode & 0xF000) === 0x8000) {
+            if ((opcode & 0x000F) === 0x0) {
+                this.LD_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x1) {
+                this.OR_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x2) {
+                this.AND_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x3) {
+                this.XOR_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x4) {
+                this.ADD_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x5) {
+                this.SUB_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x6) {
+                this.SHR_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0x7) {
+                this.SUBN_Vx_Vy(x, y);
+            } else if ((opcode & 0x000F) === 0xE) {
+                this.SHL_Vx_Vy(x, y);
+            } else {
+                // Invalid opcode
+                console.log("INVALID OPCODE: " + opcode.toString(16))
+            }
+        } else if ((opcode & 0xF000) === 0x9000) {
+            this.SNE_Vx_Vy(x, y);
+        } else if ((opcode & 0xF000) === 0xA000) {
+            this.LD_I_addr(addr);
+        } else if ((opcode & 0xF000) === 0xB000) {
+            this.JP_V0_addr(addr);
+        } else if ((opcode & 0xF000) === 0xC000) {
+            this.RND_Vx_byte(x, kk);
+        } else if ((opcode & 0xF000) === 0xD000) {
+            this.DRW_Vx_Vy_nibble(x, y);
+        } else if ((opcode & 0xF000) === 0xE000) {
+            if ((opcode & 0x00FF) === 0x9E) {
+                this.SKP_Vx(x);
+            } else if ((opcode & 0x00FF) === 0xA1) {
+                this.SKNP_Vx(x);
+            } else {
+                // Invalid opcode
+                console.log("INVALID OPCODE: " + opcode.toString(16))
+            }
+        } else if ((opcode & 0xF000) === 0xF000) {
+            if ((opcode & 0x00FF) === 0x07) {
+                this.LD_Vx_DT(x);
+            } else if ((opcode & 0x00FF) === 0x0A) {
+                this.LD_Vx_K(x);
+            } else if ((opcode & 0x00FF) === 0x15) {
+                this.LD_DT_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x18) {
+                this.LD_ST_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x1E) {
+                this.ADD_I_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x29) {
+                this.LD_F_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x33) {
+                this.LD_B_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x55) {
+                this.LD_I_Vx(x);
+            } else if ((opcode & 0x00FF) === 0x65) {
+                this.LD_Vx_I(x);
+            } else {
+                // Invalid opcode
+                console.log("INVALID OPCODE: " + opcode.toString(16))
+            }
+        } else {
+            // Invalid opcode
+            console.log("INVALID OPCODE: " + opcode.toString(16))
         }
-    };
+    }
 
     this.emulateCycle = function() {
         //Fetch the next opcode.  Opcodes are two bytes long, so we need to merge two bytes to get it.
@@ -395,12 +159,154 @@ function chip8() {
         //if (this.mem[pc+1] == null)
         //    this.mem[pc+1] = 0x00;
 
-        this.opcode = this.mem[this.pc] << 8 | this.mem[this.pc+1];
-        this.execute();
+        let opcode = this.mem[this.pc] << 8 | this.mem[this.pc+1];
+        this.execute(opcode);
 
         if ((new Date).getTime() > (this.lastDelayTick + 17)) {
             this.decdt();
         }
+    };
+
+    // OPCODE IMPLEMENTATIONS
+
+    this.CLS = function() {
+        debugLog(`CLS`);
+    };
+
+    this.RET = function() {
+        debugLog(`RET`);
+    };
+
+    this.SYS_addr = function(addr) {
+        debugLog(`SYS addr; addr=${addr.toString(16)}`);
+    };
+
+    this.JP_addr = function(addr) {
+        debugLog(`JP addr; addr=${addr.toString(16)}`);
+    };
+
+    this.CALL_addr = function(addr) {
+        debugLog(`CALL addr; addr=${addr.toString(16)}`);
+    };
+
+    this.SE_Vx_byte = function(x, byte) {
+        debugLog(`SE Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+    };
+
+    this.SNE_Vx_byte = function(x, byte) {
+        debugLog(`SNE Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+    };
+
+    this.SE_Vx_Vy = function(x, y) {
+        debugLog(`SE Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.LD_Vx_byte = function(x, byte) {
+        debugLog(`LD Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+    };
+
+    this.ADD_Vx_byte = function(x, byte) {
+        debugLog(`ADD Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+    };
+
+    this.LD_Vx_Vy = function(x, y) {
+        debugLog(`LD Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.OR_Vx_Vy = function(x, y) {
+        debugLog(`OR Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.AND_Vx_Vy = function(x, y) {
+        debugLog(`AND Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.XOR_Vx_Vy = function(x, y) {
+        debugLog(`XOR Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.ADD_Vx_Vy = function(x, y) {
+        debugLog(`ADD Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.SUB_Vx_Vy = function(x, y) {
+        debugLog(`SUB Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.SHR_Vx_Vy = function(x, y) {
+        debugLog(`SHR Vx {, Vy}; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.SUBN_Vx_Vy = function(x, y) {
+        debugLog(`SUBN Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.SHL_Vx_Vy = function(x, y) {
+        debugLog(`SHL Vx {, Vy}; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.SNE_Vx_Vy = function(x, y) {
+        debugLog(`SNE Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+    };
+
+    this.LD_I_addr = function(addr) {
+        debugLog(`LD I, addr; addr=${addr.toString(16)}`);
+    };
+
+    this.JP_V0_addr = function(addr) {
+        debugLog(`JP V0, addr; addr=${addr.toString(16)}`);
+    };
+
+    this.RND_Vx_byte = function(x, byte) {
+        debugLog(`RND Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+    };
+
+    this.DRW_Vx_Vy_nibble = function(x, y, nibble) {
+        debugLog(`RND Vx, byte; x=${x.toString(16)}, y=${y.toString(16)}, nibble=${nibble.toString(16)}`);
+    };
+
+    this.SKP_Vx = function(x) {
+        debugLog(`SKP Vx; x=${x.toString(16)}`);
+    };
+
+    this.SKNP_Vx = function(x) {
+        debugLog(`SKNP Vx; x=${x.toString(16)}`);
+    };
+
+    this.LD_Vx_DT = function(x) {
+        debugLog(`LD Vx, DT; x=${x.toString(16)}`);
+    };
+
+    this.LD_Vx_K = function(x) {
+        debugLog(`LD Vx, K; x=${x.toString(16)}`);
+    };
+
+    this.LD_DT_Vx = function(x) {
+        debugLog(`LD DT, Vx; x=${x.toString(16)}`);
+    };
+
+    this.LD_ST_Vx = function(x) {
+        debugLog(`LD ST, Vx; x=${x.toString(16)}`);
+    };
+
+    this.ADD_I_Vx = function(x) {
+        debugLog(`ADD I, Vx; x=${x.toString(16)}`);
+    };
+
+    this.LD_F_Vx = function(x) {
+        debugLog(`LD F, Vx; x=${x.toString(16)}`);
+    };
+
+    this.LD_B_Vx = function(x) {
+        debugLog(`LD B, Vx; x=${x.toString(16)}`);
+    };
+
+    this.LD_I_Vx = function(I, x) {
+        debugLog(`LD [I], Vx; I=${I.toString(16)}, x=${x.toString(16)}`);
+    };
+
+    this.LD_Vx_I = function(x) {
+        debugLog(`LD Vx, [I]; x=${x.toString(16)}, I=${I.toString(16)}`);
     };
 
     this.setupSprites = function() {
@@ -503,4 +409,24 @@ function chip8() {
     };
 
     this.setupSprites();
+}
+
+function createArray(length) {
+    var arr = new Array(length || 0),
+        i = length;
+
+    if (arguments.length > 1) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        while(i--) arr[length-1 - i] = createArray.apply(this, args);
+    }
+
+    return arr;
+}
+
+function debugLog(msg) {
+    let debugLogEnabled = true;
+
+    if (debugLogEnabled) {
+        console.log(msg);
+    }
 }
