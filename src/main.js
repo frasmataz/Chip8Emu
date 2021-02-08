@@ -4,7 +4,7 @@
 
 var table;
 var emu = new chip8();
-var frameskip = 32;
+var frameskip = 1;
 var delay = 0;
 var Vcells = [];
 var display = document.getElementById('display');
@@ -33,8 +33,6 @@ function load () {
     firstCycle = true;
 
     reader.onload = function(e) {
-
-
         var rawData = reader.result;
 
         for (var l = 0; l<rawData.length; l++)
@@ -459,7 +457,7 @@ runTest = function() {
     }
     emu={}
 
-    //Fx55 LD Vx, [I]
+    //Fx65 LD Vx, [I]
     emu = new chip8();
     emu.mem[0x200]=0xFF;
     emu.mem[0x201]=0x65;
@@ -509,7 +507,13 @@ doReset = function(newFile) {
     }
 };
 
+sleepFor = function( sleepDuration ){
+    var now = new Date().getTime();
+    while(new Date().getTime() < now + sleepDuration){ /* do nothing */ } 
+}
+
 updateLoop = function() {
+    sleepFor(10);
     for (var i=0; i < frameskip; i++) {
         emu.emulateCycle();
     }
@@ -541,12 +545,10 @@ speeddown = function() {
 updateScreen = function() {
     for (var x=0; x<DISPLAY_WIDTH; x++) {
         for (var y=0; y<DISPLAY_HEIGHT; y++) {
-            var pixel = emu.framebuffer[x][y];
-
-            if (pixel === 0)
-                context.fillStyle = 'black';
-            else
+            if (emu.framebuffer[y][x])
                 context.fillStyle = 'white';
+            else
+                context.fillStyle = 'black';
 
             context.fillRect(x*10, y*10, (x+1)*10, (y+1)*10);
         }

@@ -8,7 +8,7 @@ function chip8() {
     this.mem = [];
     this.V = [];
     this.stack = new Array(16);
-    this.framebuffer = createArray(64, 32);
+    this.framebuffer = createArray(DISPLAY_HEIGHT, DISPLAY_WIDTH);
 
     this.pc = 0x200;
     this.opcode = 0;
@@ -16,6 +16,8 @@ function chip8() {
     this.sp = 0;
     this.delaytimer = 0;
     this.soundtimer = 0;
+
+    this.pauseTimers = false;
 
     this.lastDelayTick = (new Date).getTime();
 
@@ -35,14 +37,15 @@ function chip8() {
 
 
     this.decdt = function() {
-        if (this.delaytimer > 0) {
-            this.delaytimer--;
-        }
+        if (!this.pauseTimers) {
+            if (this.delaytimer > 0) {
+                this.delaytimer--;
+            }
 
-        if (this.soundtimer > 0) {
-            this.soundtimer--;
+            if (this.soundtimer > 0) {
+                this.soundtimer--;
+            }
         }
-
         this.lastDelayTick = (new Date).getTime();
     };
 
@@ -112,7 +115,7 @@ function chip8() {
         } else if ((opcode & 0xF000) === 0xC000) {
             this.RND_Vx_byte(x, kk);
         } else if ((opcode & 0xF000) === 0xD000) {
-            this.DRW_Vx_Vy_nibble(x, y);
+            this.DRW_Vx_Vy_nibble(x, y, n);
         } else if ((opcode & 0xF000) === 0xE000) {
             if ((opcode & 0x00FF) === 0x9E) {
                 this.SKP_Vx(x);
@@ -171,142 +174,319 @@ function chip8() {
 
     this.CLS = function() {
         debugLog(`CLS`);
+        this.framebuffer = createArray(DISPLAY_HEIGHT, DISPLAY_WIDTH);
+        this.pc += 2;
     };
 
     this.RET = function() {
         debugLog(`RET`);
+        if (this.sp > 0) {
+            debugLog(`SP is currently ${this.sp}`);
+            this.sp -= 1;
+            this.pc = this.stack[this.sp];
+        } else {
+            debugLog(`ERROR: SP shows stack is empty: sp=${this.sp}`);
+        }
     };
 
     this.SYS_addr = function(addr) {
         debugLog(`SYS addr; addr=${addr.toString(16)}`);
+        this.pc = addr;
     };
 
     this.JP_addr = function(addr) {
         debugLog(`JP addr; addr=${addr.toString(16)}`);
+        this.pc = addr;
     };
 
     this.CALL_addr = function(addr) {
         debugLog(`CALL addr; addr=${addr.toString(16)}`);
+        if (this.sp < 15) {
+            debugLog(`SP is currently ${this.sp}`);
+            this.stack[this.sp] = this.pc;
+            this.sp += 1;
+            this.pc = addr;
+        } else {
+            debugLog(`ERROR: SP shows stack is full: sp=${this.sp}`);
+        }
     };
 
     this.SE_Vx_byte = function(x, byte) {
         debugLog(`SE Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+        if (this.V[x] === byte) {
+            this.pc += 4;
+        } else {
+            this.pc += 2;
+        }
     };
 
     this.SNE_Vx_byte = function(x, byte) {
         debugLog(`SNE Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+        if (this.V[x] !== byte) {
+            this.pc += 4;
+        } else {
+            this.pc += 2;
+        }
     };
 
     this.SE_Vx_Vy = function(x, y) {
         debugLog(`SE Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        if (this.V[x] === this.V[y]) {
+            this.pc += 4;
+        } else {
+            this.pc += 2;
+        }
     };
 
     this.LD_Vx_byte = function(x, byte) {
         debugLog(`LD Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+        this.V[x] = byte;
+        this.pc += 2;
     };
 
     this.ADD_Vx_byte = function(x, byte) {
         debugLog(`ADD Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+        this.V[x] = (this.V[x] + byte) % 0x100;
+        this.pc += 2;
     };
 
     this.LD_Vx_Vy = function(x, y) {
         debugLog(`LD Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[x] = this.V[y];
+        this.pc += 2;
     };
 
     this.OR_Vx_Vy = function(x, y) {
         debugLog(`OR Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[x] = this.V[x] | this.V[y];
+        this.pc += 2;
     };
 
     this.AND_Vx_Vy = function(x, y) {
         debugLog(`AND Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[x] = this.V[x] & this.V[y];
+        this.pc += 2;
     };
 
     this.XOR_Vx_Vy = function(x, y) {
         debugLog(`XOR Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[x] = this.V[x] ^ this.V[y];
+        this.pc += 2;
     };
 
     this.ADD_Vx_Vy = function(x, y) {
         debugLog(`ADD Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        let res = this.V[x] + this.V[y];
+
+        if (res > 0xFF) {
+            this.V[0xF] = 1;
+        } else {
+            this.V[0xF] = 0;
+        }
+
+        this.V[x] = res % 0x100;
+        this.pc += 2;
     };
 
     this.SUB_Vx_Vy = function(x, y) {
         debugLog(`SUB Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        // Note: VF is set to 1 if *NOT* carry
+
+        if (this.V[x] > this.V[y]) {
+            this.V[0xF] = 1;
+            this.V[x] -= this.V[y];
+        } else {
+            this.V[0xF] = 0;
+            this.V[x] = (this.V[x] + (0x100 - this.V[y])) % 0x100;
+        }
+
+        this.pc += 2;
     };
 
     this.SHR_Vx_Vy = function(x, y) {
         debugLog(`SHR Vx {, Vy}; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[0xF] = this.V[x] & 0x1;
+        this.V[x] = this.V[x] >> 1;
     };
 
     this.SUBN_Vx_Vy = function(x, y) {
         debugLog(`SUBN Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        // Note: VF is set to 1 if *NOT* carry
+
+        if (this.V[y] > this.V[x]) {
+            this.V[0xF] = 1;
+            this.V[x] = this.V[y] - this.V[x];
+        } else {
+            this.V[0xF] = 0;
+            this.V[x] = (this.V[y] + (0x100 - this.V[x])) % 0x100;
+        }
+
+        this.pc += 2;
     };
 
     this.SHL_Vx_Vy = function(x, y) {
         debugLog(`SHL Vx {, Vy}; x=${x.toString(16)}, y=${y.toString(16)}`);
+        this.V[0xF] = (this.V[x] & 0x80) >> 7;
+        this.V[x] = (this.V[x] << 1) % 0x100;
+
+        this.pc += 2;
     };
 
     this.SNE_Vx_Vy = function(x, y) {
         debugLog(`SNE Vx, Vy; x=${x.toString(16)}, y=${y.toString(16)}`);
+        if (this.V[x] === this.V[y]) {
+            this.pc += 2;
+        } else {
+            this.pc += 4;
+        }
     };
 
     this.LD_I_addr = function(addr) {
         debugLog(`LD I, addr; addr=${addr.toString(16)}`);
+        this.I = addr;
+        this.pc += 2;
     };
 
     this.JP_V0_addr = function(addr) {
         debugLog(`JP V0, addr; addr=${addr.toString(16)}`);
+        this.pc = addr + this.V[0];
     };
 
     this.RND_Vx_byte = function(x, byte) {
         debugLog(`RND Vx, byte; x=${x.toString(16)}, byte=${byte.toString(16)}`);
+        this.V[x] = Math.floor(Math.random() * 0x100) & byte;
+        this.pc += 2;
     };
 
-    this.DRW_Vx_Vy_nibble = function(x, y, nibble) {
-        debugLog(`RND Vx, byte; x=${x.toString(16)}, y=${y.toString(16)}, nibble=${nibble.toString(16)}`);
+    this.DRW_Vx_Vy_nibble = function(x, y, n) {
+        debugLog(`DRW Vx, byte; x=${x.toString(16)}, y=${y.toString(16)}, n=${n.toString(16)}`);
+        let collision = false;
+        
+        // Loop through each byte in sprite
+        for (let i = 0; i < n; i++) {
+            let byte = this.mem[this.I + i];
+
+            // Loop through each bit in byte
+            for (let j = 0; j < 8; j++) {
+                let bit = !!((byte & (1 << j)) >> j);
+                let oldBit = this.framebuffer[(this.V[y] + i) % DISPLAY_HEIGHT][(this.V[x] + j) % DISPLAY_WIDTH];
+
+                if (bit && oldBit) {
+                    collision = true;
+                }
+
+                this.framebuffer[(this.V[y] + i) % DISPLAY_HEIGHT][(this.V[x] + j) % DISPLAY_WIDTH] = (bit != oldBit ? true : false);
+            }
+        }
+
+        this.V[0xF] = collision ? 1 : 0;
+        this.pc += 2;
     };
 
     this.SKP_Vx = function(x) {
         debugLog(`SKP Vx; x=${x.toString(16)}`);
+        if (this.keystatus[this.V[x]]) {
+            this.pc += 4;
+        } else {
+            this.pc += 2;
+        }
     };
 
     this.SKNP_Vx = function(x) {
         debugLog(`SKNP Vx; x=${x.toString(16)}`);
+        if (!this.keystatus[this.V[x]]) {
+            this.pc += 4;
+        } else {
+            this.pc += 2;
+        }
     };
 
     this.LD_Vx_DT = function(x) {
         debugLog(`LD Vx, DT; x=${x.toString(16)}`);
+        this.V[x] = this.delaytimer;
+        this.pc += 2;
     };
 
     this.LD_Vx_K = function(x) {
+        // This instruction waits for a keypress before continuing.
+        // Here this is implemented by setting a flag to pause timers,
+        // and refusing to increment PC, thus running this instruction over and over.
+        // This is just to simplify rechecking pressed keys
+
         debugLog(`LD Vx, K; x=${x.toString(16)}`);
+        
+        let keyPressed = -1;
+        for (let i = 0; i < 16; i++) {
+            if (this.keystatus[i]) {
+                keyPressed = i;
+            }
+        }
+        
+        if (keyPressed === -1) {
+            this.pauseTimers = true;
+        } else {
+            this.V[x] = keyPressed;
+            this.pc += 2;
+            this.pauseTimers = false;
+        }
     };
 
     this.LD_DT_Vx = function(x) {
         debugLog(`LD DT, Vx; x=${x.toString(16)}`);
+        this.delaytimer = this.V[x];
+        this.pc += 2;
     };
 
     this.LD_ST_Vx = function(x) {
         debugLog(`LD ST, Vx; x=${x.toString(16)}`);
+        this.soundtimer = this.V[x];
+        this.pc += 2;
     };
 
     this.ADD_I_Vx = function(x) {
         debugLog(`ADD I, Vx; x=${x.toString(16)}`);
+        this.I = (this.I + this.V[x]) % 0x100;
+        this.pc += 2;
     };
 
     this.LD_F_Vx = function(x) {
         debugLog(`LD F, Vx; x=${x.toString(16)}`);
+        this.I = this.V[x] * 5;
+        this.pc += 2;
     };
 
     this.LD_B_Vx = function(x) {
         debugLog(`LD B, Vx; x=${x.toString(16)}`);
+
+        //Store BCD of Vx in I, I+1 and I+2
+        var numberStr = this.V[x].toString();
+        for (i = 0; i < 3; i++) {
+            this.mem[this.I + i] = parseInt(numberStr[i]);
+        }
+
+        this.ramUpdateFlag=true;
+        this.pc += 2;
     };
 
-    this.LD_I_Vx = function(I, x) {
-        debugLog(`LD [I], Vx; I=${I.toString(16)}, x=${x.toString(16)}`);
+    this.LD_I_Vx = function(x) {
+        debugLog(`LD [I], Vx; I=${this.I.toString(16)}, x=${x.toString(16)}`);
+
+        for (var i = 0x0; i < 0x10; i++) {
+            this.mem[this.I+i] = this.V[i];
+        }
+
+        this.ramUpdateFlag=true;
+        this.pc += 2;
     };
 
     this.LD_Vx_I = function(x) {
-        debugLog(`LD Vx, [I]; x=${x.toString(16)}, I=${I.toString(16)}`);
+        debugLog(`LD Vx, [I]; x=${x.toString(16)}, I=${this.I.toString(16)}`);
+
+        for (var i = 0x0; i < 0x10; i++) {
+            this.V[i] = this.mem[this.I+i];
+        }
+
+        this.pc += 2;
     };
 
     this.setupSprites = function() {
@@ -411,20 +591,24 @@ function chip8() {
     this.setupSprites();
 }
 
-function createArray(length) {
-    var arr = new Array(length || 0),
-        i = length;
+function createArray(height, width) {
+    let array = [];
 
-    if (arguments.length > 1) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        while(i--) arr[length-1 - i] = createArray.apply(this, args);
+    for (let y = 0; y < height; y++) {
+        let row = [];
+
+        for (let x = 0; x < width; x++) {
+            row.push(false);
+        }
+
+        array.push(row);
     }
-
-    return arr;
+    
+    return array;
 }
 
 function debugLog(msg) {
-    let debugLogEnabled = true;
+    let debugLogEnabled = false;
 
     if (debugLogEnabled) {
         console.log(msg);
