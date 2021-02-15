@@ -1,7 +1,3 @@
-/**
- * Created by Fraser on 29/06/2015.
- */
-
 function chip8() {
     this.keycodes = [88,49,50,51,81,87,69,65,83,68,90,67,52,82,70,86];
     this.keystatus = [];
@@ -50,7 +46,7 @@ function chip8() {
     };
 
     this.execute = function(opcode) {
-        this.ramUpdateFlag=false; //
+        this.ramUpdateFlag=false;
         var addr;
         var x, y, kk, n;
 
@@ -183,7 +179,7 @@ function chip8() {
         if (this.sp > 0) {
             debugLog(`SP is currently ${this.sp}`);
             this.sp -= 1;
-            this.pc = this.stack[this.sp];
+            this.pc = this.stack[this.sp] + 2;
         } else {
             debugLog(`ERROR: SP shows stack is empty: sp=${this.sp}`);
         }
@@ -307,6 +303,7 @@ function chip8() {
         debugLog(`SHR Vx {, Vy}; x=${x.toString(16)}, y=${y.toString(16)}`);
         this.V[0xF] = this.V[x] & 0x1;
         this.V[x] = this.V[x] >> 1;
+        this.pc += 2;
     };
 
     this.SUBN_Vx_Vy = function(x, y) {
@@ -368,14 +365,14 @@ function chip8() {
 
             // Loop through each bit in byte
             for (let j = 0; j < 8; j++) {
-                let bit = !!((byte & (1 << j)) >> j);
+                let bit = !!((byte & (0x80 >> j)) << j);
                 let oldBit = this.framebuffer[(this.V[y] + i) % DISPLAY_HEIGHT][(this.V[x] + j) % DISPLAY_WIDTH];
 
                 if (bit && oldBit) {
                     collision = true;
                 }
 
-                this.framebuffer[(this.V[y] + i) % DISPLAY_HEIGHT][(this.V[x] + j) % DISPLAY_WIDTH] = (bit != oldBit ? true : false);
+                this.framebuffer[(this.V[y] + i) % DISPLAY_HEIGHT][(this.V[x] + j) % DISPLAY_WIDTH] = (bit !== oldBit) ;
             }
         }
 
@@ -445,7 +442,7 @@ function chip8() {
 
     this.ADD_I_Vx = function(x) {
         debugLog(`ADD I, Vx; x=${x.toString(16)}`);
-        this.I = (this.I + this.V[x]) % 0x100;
+        this.I = (this.I + this.V[x]) % 0x1000;
         this.pc += 2;
     };
 
@@ -471,7 +468,7 @@ function chip8() {
     this.LD_I_Vx = function(x) {
         debugLog(`LD [I], Vx; I=${this.I.toString(16)}, x=${x.toString(16)}`);
 
-        for (var i = 0x0; i < 0x10; i++) {
+        for (var i = 0x0; i <= x; i++) {
             this.mem[this.I+i] = this.V[i];
         }
 
@@ -482,7 +479,7 @@ function chip8() {
     this.LD_Vx_I = function(x) {
         debugLog(`LD Vx, [I]; x=${x.toString(16)}, I=${this.I.toString(16)}`);
 
-        for (var i = 0x0; i < 0x10; i++) {
+        for (var i = 0x0; i <= x; i++) {
             this.V[i] = this.mem[this.I+i];
         }
 
@@ -603,7 +600,7 @@ function createArray(height, width) {
 
         array.push(row);
     }
-    
+
     return array;
 }
 
@@ -611,6 +608,8 @@ function debugLog(msg) {
     let debugLogEnabled = false;
 
     if (debugLogEnabled) {
+        console.log('---------');
+        printRegs();
         console.log(msg);
     }
 }
