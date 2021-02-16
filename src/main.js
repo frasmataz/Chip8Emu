@@ -82,13 +82,7 @@ doReset = function(newFile) {
     }
 };
 
-sleepFor = function( sleepDuration ){
-    var now = new Date().getTime();
-    while(new Date().getTime() < now + sleepDuration){ /* do nothing */ } 
-}
-
 updateLoop = function() {
-    sleepFor(100);
     for (var i=0; i < frameskip; i++) {
         emu.emulateCycle();
     }
